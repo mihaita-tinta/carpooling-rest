@@ -10,6 +10,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.LocalDateTime;
+
 import static org.junit.Assert.*;
 
 @RunWith(SpringRunner.class)
@@ -24,12 +26,14 @@ public class UserRepositoryTest {
         User user = new User();
         user.setFirstName("user1");
         user.setLastName("last name");
+        user.setCreatedDate(LocalDateTime.now());
         Mono<User> userMono = repository.save(user);
 
         StepVerifier
                 .create(userMono)
                 .assertNext(saved -> {
                     assertNotNull(saved.getId());
+                    assertNotNull(saved.getCreatedDate());
                 })
                 .expectComplete()
                 .verify();
