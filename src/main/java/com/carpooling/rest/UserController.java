@@ -7,9 +7,10 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.time.LocalDateTime;
 
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 @RestController
 public class UserController {
 
@@ -23,9 +24,24 @@ public class UserController {
     }
 
     @PostMapping("/")
-    public Mono<User> save(@RequestBody User user) {
-        if (user.getId() == null)
-            user.setCreatedDate(LocalDateTime.now());
+    public Mono<User> save(@Valid @RequestBody UserDto dto) {
+
+        User user = new User();
+        user.setUsername(dto.getUsername());
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setPassword(dto.getPassword());
+        user.setCreatedDate(LocalDateTime.now());
+        user.setActive(false);// TODO we need to decide how the users are activated
         return userRepository.save(user);
+    }
+
+    @PostMapping("/{userId}/activate")
+    public Mono<User> save(@PathVariable String userId) {
+        return userRepository.findById(userId)
+                .flatMap(user -> {
+                    user.setActive(true);
+                    return userRepository.save(user);
+                });
     }
 }
