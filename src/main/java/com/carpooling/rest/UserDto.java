@@ -12,6 +12,7 @@ public class UserDto {
     private String lastName;
     @NotNull
     private String password;
+    private boolean active;
 
     public String getUsername() {
         return username;
@@ -43,5 +44,13 @@ public class UserDto {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

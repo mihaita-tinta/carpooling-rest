@@ -1,0 +1,132 @@
+= Carpooling REST API Guide
+Mihaita Tinta;
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 4
+:sectlinks:
+
+[[overview]]
+= Overview
+
+[[overview-endpoints]]
+== Endpoints
+
+Carpooling REST API tries to adhere as closely as possible to standard HTTP and REST conventions in its
+use of HTTP verbs.
+
+|===
+| Verb | Usage
+
+| `GET`
+| Used to retrieve a resource
+
+| `POST`
+| Used to create a new resource
+
+| `PATCH`
+| Used to update an existing resource, including partial updates
+
+| `DELETE`
+| Used to delete an existing resource
+|===
+
+Carpooling REST API tries to adhere as closely as possible to standard HTTP and REST conventions in its
+use of HTTP status codes.
+
+|===
+| Status code | Usage
+
+| `200 OK`
+| The request completed successfully
+
+| `201 Created`
+| A new resource has been created successfully. The resource's URI is available from the response's
+`Location` header
+
+| `204 No Content`
+| An update to an existing resource has been applied successfully
+
+| `400 Bad Request`
+| The request was malformed. The response body will include an error providing further information
+
+| `404 Not Found`
+| The requested resource did not exist
+|===
+
+[[overview-hypermedia]]
+== Hypermedia
+
+Carpooling REST API uses hypermedia and resources include links to other resources in their
+responses. Responses are in http://stateless.co/hal_specification.html[Hypertext Application
+from resource to resource.
+Language (HAL)] format. Links can be found beneath the `_links` key. Users of the API should
+not create URIs themselves, instead they should use the above-described links to navigate
+
+[[resources]]
+= Resources
+
+
+[[resources-users]]
+== Users
+
+All the users of the application are represented with this resource
+
+[[resources-users-get]]
+=== GET /users
+
+A `GET` request is used to list the users
+
+==== Request structure
+
+include::{snippets}/get-users/http-request.adoc[]
+
+==== Example response
+
+include::{snippets}/get-users/http-response.adoc[]
+
+==== CURL request
+
+include::{snippets}/get-users/curl-request.adoc[]
+
+[[resources-users-post]]
+=== POST /users
+
+A `POST` request is used to create a new user.
+
+==== Request structure
+
+include::{snippets}/post-users/http-request.adoc[]
+
+==== Example response
+
+include::{snippets}/post-users/http-response.adoc[]
+
+==== CURL request
+
+include::{snippets}/post-users/curl-request.adoc[]
+
+[[resources-users-activate]]
+=== POST /users/{id}/activate
+
+A `POST` request is used to activate an user. Only users with role: ADMIN can call this.
+
+==== Request structure
+
+include::{snippets}/activate-users/http-request.adoc[]
+
+==== Path Parameters
+include::{snippets}/activate-users/path-parameters.adoc[]
+
+==== Example response
+
+include::{snippets}/activate-users/http-response.adoc[]
+
+==== CURL request
+
+include::{snippets}/activate-users/curl-request.adoc[]
+
+
+
+

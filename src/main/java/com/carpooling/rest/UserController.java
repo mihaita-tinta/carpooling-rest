@@ -36,9 +36,9 @@ public class UserController {
         return userRepository.save(user);
     }
 
-    @PostMapping("/{userId}/activate")
-    public Mono<User> save(@PathVariable String userId) {
-        return userRepository.findById(userId)
+    @PostMapping("/{id}/activate")
+    public Mono<User> save(@PathVariable String id) {
+        return userRepository.findById(id)
                 .flatMap(user -> {
                     user.setActive(true);
                     return userRepository.save(user);
