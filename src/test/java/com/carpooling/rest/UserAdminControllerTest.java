@@ -24,14 +24,14 @@ import java.util.Arrays;
 
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
-import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.documentationConfiguration;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {"logging.level.org.springframework.web.reactive.function.client.ExchangeFunctions=TRACE",
         "spring.http.log-request-details=true"})
-public class UserControllerTest {
+public class UserAdminControllerTest {
     @Rule
     public final JUnitRestDocumentation restDocumentation = new JUnitRestDocumentation();
 
@@ -52,8 +52,8 @@ public class UserControllerTest {
     }
 
     @Test
-    @WithMockUser
-    public void testList() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    public void testActivate() throws Exception {
         User user = new User();
         user.setUsername("junit");
         user.setRoles(Arrays.asList("USER", "ADMIN"));
@@ -63,66 +63,36 @@ public class UserControllerTest {
         user.setCreatedDate(LocalDateTime.now());
         userRepository.save(user).block();
 
-        client.get()
-                .uri("/api/users/")
+        client
+                .post()
+                .uri("/api/users/{id}/activate", user.getId() )
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .exchange()
                 .expectStatus()
                 .is2xxSuccessful()
                 .expectBody()
-                .consumeWith(s -> System.out.println(new String(s.getResponseBody())))
-                .jsonPath("$.[?(@.username == 'junit')]").exists()
-                .consumeWith(document("get-users"));
-    }
-
-    @After
-    public void cleanup() {
-        userRepository.deleteAll().block();
-    }
-
-    @Test
-    @WithMockUser
-    public void testSave() throws Exception {
-        UserDto user = new UserDto();
-        user.setFirstName("f1");
-        user.setLastName("f2");
-        user.setUsername("junit");
-        user.setPassword("zzz");
-        client.mutateWith(csrf())
-                .post()
-                .uri("/api/users/")
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(Mono.just(user), UserDto.class)
-                .exchange()
-                .expectStatus()
-                .is2xxSuccessful()
-                .expectBody()
-                .jsonPath("$.firstName").isEqualTo("f1")
-                .jsonPath("$.lastName").isEqualTo("f2")
-                .jsonPath("$.createdDate").isNotEmpty()
-                .jsonPath("$.id").isNotEmpty()
-                .consumeWith(document("post-users"));
+                .jsonPath("$.active").isEqualTo(true)
+                .jsonPath("$.id").isEqualTo(user.getId())
+                .consumeWith(document("activate-users",
+                        pathParameters(
+                                parameterWithName("id").description("The id of the user")
+                        )));
 
     }
 
     @Test
     @WithMockUser
-    public void testSaveNotValid() throws Exception {
-        UserDto user = new UserDto();
+    public void testActivateForbidden() {
+
         client.mutateWith(csrf())
                 .post()
-                .uri("/api/users/")
+                .uri("/api/users/123/activate")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(Mono.just(user), UserDto.class)
                 .exchange()
                 .expectStatus()
-                .is4xxClientError()
+                .isForbidden()
                 .expectBody()
-                .consumeWith(s -> System.out.println(new String(s.getResponseBody())))
-                .jsonPath("$.errors[?(@.codes[0] == 'NotNull.userDto.firstName')]").exists()
-                .jsonPath("$.errors[?(@.codes[0] == 'NotNull.userDto.lastName')]").exists()
-                .consumeWith(document("invalid-post-users"));
+                .consumeWith(document("forbidden-activate-users"));
 
     }
-
 }

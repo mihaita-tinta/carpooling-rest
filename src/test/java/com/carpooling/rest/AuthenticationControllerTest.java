@@ -2,6 +2,7 @@ package com.carpooling.rest;
 
 import com.carpooling.domain.User;
 import com.carpooling.repository.UserRepository;
+import com.carpooling.rest.model.LoginRequest;
 import com.carpooling.rest.model.UserDto;
 import org.junit.After;
 import org.junit.Before;
@@ -14,6 +15,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.JUnitRestDocumentation;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -24,14 +26,14 @@ import java.util.Arrays;
 
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
-import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document;
 import static org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.documentationConfiguration;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(properties = {"logging.level.org.springframework.web.reactive.function.client.ExchangeFunctions=TRACE",
         "spring.http.log-request-details=true"})
-public class UserControllerTest {
+public class AuthenticationControllerTest {
     @Rule
     public final JUnitRestDocumentation restDocumentation = new JUnitRestDocumentation();
 
@@ -40,6 +42,8 @@ public class UserControllerTest {
 
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
     WebTestClient client;
 
@@ -51,78 +55,83 @@ public class UserControllerTest {
                 .build();
     }
 
-    @Test
-    @WithMockUser
-    public void testList() throws Exception {
-        User user = new User();
-        user.setUsername("junit");
-        user.setRoles(Arrays.asList("USER", "ADMIN"));
-        user.setPassword("xxx");
-        user.setFirstName("mih");
-        user.setLastName("tnt");
-        user.setCreatedDate(LocalDateTime.now());
-        userRepository.save(user).block();
-
-        client.get()
-                .uri("/api/users/")
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .exchange()
-                .expectStatus()
-                .is2xxSuccessful()
-                .expectBody()
-                .consumeWith(s -> System.out.println(new String(s.getResponseBody())))
-                .jsonPath("$.[?(@.username == 'junit')]").exists()
-                .consumeWith(document("get-users"));
-    }
-
     @After
     public void cleanup() {
         userRepository.deleteAll().block();
     }
 
     @Test
-    @WithMockUser
-    public void testSave() throws Exception {
-        UserDto user = new UserDto();
-        user.setFirstName("f1");
-        user.setLastName("f2");
+    public void testLogin() throws Exception {
+
+        User user = new User();
         user.setUsername("junit");
-        user.setPassword("zzz");
-        client.mutateWith(csrf())
-                .post()
-                .uri("/api/users/")
+        user.setPassword(passwordEncoder.encode("zzz"));
+        user.setRoles(Arrays.asList("USER", "ADMIN"));
+        user.setFirstName("mih");
+        user.setLastName("tnt");
+        user.setCreatedDate(LocalDateTime.now());
+        userRepository.save(user).block();
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("junit");
+        req.setPassword("zzz");
+        client.post()
+                .uri("/authentication/")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(Mono.just(user), UserDto.class)
+                .body(Mono.just(req), LoginRequest.class)
                 .exchange()
                 .expectStatus()
                 .is2xxSuccessful()
                 .expectBody()
-                .jsonPath("$.firstName").isEqualTo("f1")
-                .jsonPath("$.lastName").isEqualTo("f2")
-                .jsonPath("$.createdDate").isNotEmpty()
-                .jsonPath("$.id").isNotEmpty()
-                .consumeWith(document("post-users"));
+                .jsonPath("$.token").isNotEmpty()
+                .consumeWith(document("authenticate-login"));
 
     }
 
     @Test
-    @WithMockUser
-    public void testSaveNotValid() throws Exception {
-        UserDto user = new UserDto();
-        client.mutateWith(csrf())
-                .post()
-                .uri("/api/users/")
+    public void testLoginFailedDueToWrongPassword() throws Exception {
+
+        User user = new User();
+        user.setUsername("junit");
+        user.setPassword(passwordEncoder.encode("zzz"));
+        user.setRoles(Arrays.asList("USER", "ADMIN"));
+        user.setFirstName("mih");
+        user.setLastName("tnt");
+        user.setCreatedDate(LocalDateTime.now());
+        userRepository.save(user).block();
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("junit");
+        req.setPassword("yyy");
+        client.post()
+                .uri("/authentication/")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .body(Mono.just(user), UserDto.class)
+                .body(Mono.just(req), LoginRequest.class)
                 .exchange()
                 .expectStatus()
-                .is4xxClientError()
+                .isUnauthorized()
                 .expectBody()
-                .consumeWith(s -> System.out.println(new String(s.getResponseBody())))
-                .jsonPath("$.errors[?(@.codes[0] == 'NotNull.userDto.firstName')]").exists()
-                .jsonPath("$.errors[?(@.codes[0] == 'NotNull.userDto.lastName')]").exists()
-                .consumeWith(document("invalid-post-users"));
+                .consumeWith(document("wrong-password-authenticate-login"));
 
     }
+
+    @Test
+    public void testLoginFailedUserDoesntExist() throws Exception {
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("notexistinguser");
+        req.setPassword("zzz");
+        client.post()
+                .uri("/authentication/")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .body(Mono.just(req), LoginRequest.class)
+                .exchange()
+                .expectStatus()
+                .isUnauthorized()
+                .expectBody()
+                .consumeWith(document("failed-authenticate-login"));
+
+    }
+
 
 }

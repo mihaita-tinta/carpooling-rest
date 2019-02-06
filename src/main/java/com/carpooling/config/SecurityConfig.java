@@ -6,14 +6,15 @@ import com.carpooling.security.bearer.BearerTokenReactiveAuthenticationManager;
 import com.carpooling.security.bearer.ServerHttpBearerAuthenticationConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -26,6 +27,7 @@ import reactor.core.publisher.Mono;
 import java.util.function.Function;
 
 @EnableWebFluxSecurity
+@EnableReactiveMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -39,8 +41,8 @@ public class SecurityConfig {
 
         http
                 .authorizeExchange()
-                .pathMatchers("/login", "/")
-                .authenticated()
+                .pathMatchers(HttpMethod.POST, "/authentication/")
+                .permitAll()
                 .and()
                 .addFilterAt(basicAuthenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC)
                 .authorizeExchange()
@@ -51,7 +53,9 @@ public class SecurityConfig {
                 .pathMatchers("/api/**")
                 .authenticated()
                 .and()
-                .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION);
+                .addFilterAt(bearerAuthenticationFilter(), SecurityWebFiltersOrder.AUTHENTICATION)
+                .csrf()
+                .disable();
 
         return http.build();
     }
@@ -88,14 +92,10 @@ public class SecurityConfig {
      * @return bearerAuthenticationFilter that will authorize requests containing a JWT
      */
     private AuthenticationWebFilter bearerAuthenticationFilter() {
-        AuthenticationWebFilter bearerAuthenticationFilter;
-        Function<ServerWebExchange, Mono<Authentication>> bearerConverter;
-        ReactiveAuthenticationManager authManager;
+        ReactiveAuthenticationManager authManager = new BearerTokenReactiveAuthenticationManager();
+        Function<ServerWebExchange, Mono<Authentication>> bearerConverter = new ServerHttpBearerAuthenticationConverter(tokenProvider);
 
-        authManager = new BearerTokenReactiveAuthenticationManager();
-        bearerAuthenticationFilter = new AuthenticationWebFilter(authManager);
-        bearerConverter = new ServerHttpBearerAuthenticationConverter(tokenProvider);
-
+        AuthenticationWebFilter bearerAuthenticationFilter = new AuthenticationWebFilter(authManager);
         bearerAuthenticationFilter.setAuthenticationConverter(bearerConverter);
         bearerAuthenticationFilter.setRequiresAuthenticationMatcher(ServerWebExchangeMatchers.pathMatchers("/api/**"));
 

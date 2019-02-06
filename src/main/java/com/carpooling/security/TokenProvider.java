@@ -34,7 +34,7 @@ public class TokenProvider {
     @PostConstruct
     public void init() {
         this.secretKey = "CommutING?";
-        this.tokenValidityInSeconds = 120;
+        this.tokenValidityInSeconds = 60 * 60;
     }
 
     public String createToken(Authentication authentication) {

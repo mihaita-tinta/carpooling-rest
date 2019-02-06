@@ -1,4 +1,4 @@
-package com.carpooling.rest;
+package com.carpooling.rest.model;
 
 import javax.validation.constraints.NotNull;
 
