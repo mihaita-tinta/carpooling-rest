@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
+import org.springframework.security.web.server.authentication.ServerHttpBasicAuthenticationConverter;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -77,7 +78,6 @@ public class SecurityConfig {
 
         basicAuthenticationFilter = new AuthenticationWebFilter(authManager);
         basicAuthenticationFilter.setAuthenticationSuccessHandler(successHandler);
-
         return basicAuthenticationFilter;
 
     }

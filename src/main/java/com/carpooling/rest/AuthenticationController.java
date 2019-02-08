@@ -77,4 +77,5 @@ public class AuthenticationController {
             }
         }).defaultIfEmpty(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
+
 }

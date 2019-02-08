@@ -84,7 +84,7 @@ public class AuthenticationControllerTest {
                 .is2xxSuccessful()
                 .expectBody()
                 .jsonPath("$.token").isNotEmpty()
-                .consumeWith(document("authenticate-login"));
+                .consumeWith(document("authentication-login"));
 
     }
 
@@ -111,7 +111,7 @@ public class AuthenticationControllerTest {
                 .expectStatus()
                 .isUnauthorized()
                 .expectBody()
-                .consumeWith(document("wrong-password-authenticate-login"));
+                .consumeWith(document("wrong-password-authentication-login"));
 
     }
 
@@ -129,7 +129,7 @@ public class AuthenticationControllerTest {
                 .expectStatus()
                 .isUnauthorized()
                 .expectBody()
-                .consumeWith(document("failed-authenticate-login"));
+                .consumeWith(document("failed-authentication-login"));
 
     }
 

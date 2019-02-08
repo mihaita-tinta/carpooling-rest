@@ -127,6 +127,29 @@ include::{snippets}/activate-users/http-response.adoc[]
 
 include::{snippets}/activate-users/curl-request.adoc[]
 
+[[resources-users-authentication]]
+=== POST /authentication/
+
+A `POST` request is used to login an user
+
+==== Request structure
+
+include::{snippets}/authentication-login/http-request.adoc[]
+
+==== Example response
+
+include::{snippets}/authentication-login/http-response.adoc[]
+
+==== CURL request
+
+include::{snippets}/authentication-login/curl-request.adoc[]
+==== Invalid credentials
+
+include::{snippets}/wrong-password-authentication-login/http-response.adoc[]
+==== Not existing user attempt response
+
+include::{snippets}/failed-authentication-login/http-response.adoc[]
+
 
 
 
