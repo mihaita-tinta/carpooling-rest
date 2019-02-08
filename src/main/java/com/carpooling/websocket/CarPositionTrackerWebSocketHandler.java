@@ -1,104 +1,58 @@
 package com.carpooling.websocket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
-import reactor.core.publisher.ConnectableFlux;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import static java.time.Duration.ofSeconds;
 
 @Component
 public class CarPositionTrackerWebSocketHandler implements WebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(CarPositionTrackerWebSocketHandler.class);
-    private static final ObjectMapper json = new ObjectMapper();
 
-    private Flux<String> eventFlux = Flux.generate(sink -> {
-        Event event = new Event(UUID.randomUUID().toString(), Instant.now().toString());
-        try {
-            String val = json.writeValueAsString(event);
-            log.info("generate: " + val );
-            sink.next(val);
-        } catch (JsonProcessingException e) {
-            e.printStackTrace();
-            sink.error(e);
-        }
-    });
+    private final Map<String, MessageHandler> connections = new ConcurrentHashMap<>();
+    private final SubscribableChannel channel;
 
+    @Autowired
+    public CarPositionTrackerWebSocketHandler(@Qualifier("trackingChannel") SubscribableChannel channel) {
+        this.channel = channel;
+    }
 
     @Override
-    public Mono<Void> handle(WebSocketSession webSocketSession) {
+    public Mono<Void> handle(WebSocketSession session) {
 
-        return webSocketSession.send(eventFlux
-                                        .map(s -> {
-                                            log.info("send - s: " + s );
-                                            return webSocketSession.textMessage(s);
-                                        })
-                                        .delayElements(Duration.ofSeconds(1))
-                                        .doOnError(t -> {
-                                            log.info("doOnComplete - eventFlux error: " + t);
-                                        })
-                                        .doFinally(s -> {
-                                            log.info("doOnComplete - eventFlux signal: " + s);
-                                        })
-                    )
-                .and(webSocketSession.receive()
-                        .map(WebSocketMessage::getPayloadAsText)
-                        .flatMap(message -> {
-                            log.info("received - message: " + message);
-                            return toMessageWithPrincipal(message, webSocketSession);
-                        })
-                        .doOnNext(m -> {
-                            log.info("received - message: " + m);
-                        })
-                        .log()
-                        .doFinally(s -> {
-                            log.info("doOnComplete - signal: " + s);
-                        }));
+        String sessionId = session.getId();
+
+        Publisher<WebSocketMessage> delayedMessages = Flux
+                .create((Consumer<FluxSink<WebSocketMessage>>) sink -> {
+                    MessageHandler handler = new ForwardingMessageHandler(sink, session);
+                    connections.put(sessionId, handler);
+                    channel.subscribe(handler);
+                })
+                .onErrorResume(Exception.class, Flux::error)
+                .doOnComplete(() -> log.info("goodbye!"))
+                .doFinally(signalType -> {
+                    log.info("handle - finally for " + sessionId);
+                    channel.unsubscribe(connections.get(sessionId));
+                    connections.remove(sessionId);
+                });
+        return session.send(delayedMessages);
     }
-    Mono<?> toMessageWithPrincipal(String message, WebSocketSession user) {
-        return user.getHandshakeInfo().getPrincipal()
-                .map(principal ->
-                        MessageBuilder
-                                .withPayload(message)
-                                .setHeader("user",
-                                        principal.getName())
-                                .build());
-    }
-    public static class Event {
-        private String eventId;
-        private String eventDt;
 
-        public Event(String eventId, String eventDt) {
-            this.eventId = eventId;
-            this.eventDt = eventDt;
-        }
-
-        public String getEventId() {
-            return eventId;
-        }
-
-        public void setEventId(String eventId) {
-            this.eventId = eventId;
-        }
-
-        public String getEventDt() {
-            return eventDt;
-        }
-
-        public void setEventDt(String eventDt) {
-            this.eventDt = eventDt;
-        }
-    }
 }

@@ -3,6 +3,7 @@ package com.carpooling.websocket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
@@ -28,6 +29,16 @@ public class WebSocketConfig {
         SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
         handlerMapping.setOrder(1);
         handlerMapping.setUrlMap(map);
+
+        Map<String, CorsConfiguration> corsConfigurationMap = new HashMap<>();
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
+        corsConfiguration.addAllowedOrigin("*");
+
+        handlerMapping.getUrlMap().keySet().forEach(route ->
+                corsConfigurationMap.put(route, corsConfiguration)
+        );
+        handlerMapping.setCorsConfigurations(corsConfigurationMap);
+
         return handlerMapping;
     }
 }
